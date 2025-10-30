@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="es">
+<head>
+   <link rel="icon" type="image/png" href="icon.png">
+<meta charset='utf-8'>
+<meta name='viewport' content='width=device-width,initial-scale=1'>
+<title>Reportes - MiHogarFinanzas</title>
+<link rel="stylesheet" href="assets.css">
+
+<style>
+  .content-box {background:white;padding:1.5rem;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.1);margin-bottom:2rem;}
+  label {display:block;margin-top:0.8rem;font-size:0.9rem;color:#333;}
+  input {width:100%;padding:0.7rem;border:1px solid #ccc;border-radius:8px;margin-top:0.3rem;}
+  button {margin-top:1rem;padding:0.8rem 1.5rem;border:none;border-radius:8px;background:#1a73e8;color:white;font-weight:bold;cursor:pointer;transition:0.3s;}
+  button:hover {background:#0f5dd1;}
+  table {width:100%;border-collapse:collapse;margin-top:1rem;}
+  th,td {padding:0.8rem;text-align:center;border-bottom:1px solid #ddd;}
+  th {background:#1a73e8;color:white;}
+  tr:hover {background:#f1f1f1;}
+  .btns {margin-top:1rem;}
+  .btns button {margin-right:0.8rem;}
+  .error{color:red;margin-top:0.5rem;}
+
+  * {margin: 0; padding: 0; box-sizing: border-box; font-family: "Segoe UI", sans-serif;}
+body {display: flex; height: 100vh; background: #f4f6f9;}
+
+.sidebar {
+  width: 250px; background: #1a73e8; color: white;
+  display: flex; flex-direction: column; padding: 1rem;
+}
+
+.sidebar h3 {text-align: center; margin-bottom: 2rem;}
+
+.sidebar a {
+  text-decoration: none; color: white; padding: 0.8rem;
+  margin: 0.3rem 0; display: block; border-radius: 8px; transition: 0.3s;
+}
+
+.sidebar a:hover {background: #0f5dd1;}
+
+.main {
+  flex: 1; padding: 2rem; overflow-y: auto;
+}
+
+.logout {margin-top: auto; text-align: center;}
+
+.logout button {
+  background: red; border: none; color: white; padding: 0.7rem 1rem;
+  border-radius: 8px; cursor: pointer; transition: 0.3s; width: 100%;
+}
+
+.logout button:hover {background: darkred;}
+.brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 2rem;
+}
+
+.brand img {
+  width: 50px;       /* tamaño del logo */
+  height: 50px;
+  border-radius: 50%; /* si quieres redondo, si no: borra esta línea */
+  object-fit: cover;
+}
+
+.brand span {
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="brand">
+  <img src="logo.png" alt="Logo">
+  <span>MiHogarFinanzas</span>
+</div>
+  <a href="/dashboard.html">🏠 Dashboard</a>
+  <a href="/clientes.html">👤 Clientes</a>
+  <a href="/inmuebles.html">🏘️ Unidades</a>
+  <a href="/configuracion.html">⚙️ Configuración</a>
+  <a href="/planpagos.html">📊 Plan de Pagos</a>
+  <a href="/indicadores.html">📈 Indicadores</a>
+  <a href="/reportes.html">🗂 Reportes</a>
+  <a href="/ayuda.html">❓ Ayuda</a>
+
+  <div class="logout">
+    <button id="logout">Cerrar Sesión</button>
+  </div>
+</div>
+
+
+<div class="main">
+  <h1>Reportes y Exportación</h1>
+
+  <div class="content-box">
+    <label>ID del Crédito</label>
+    <input id="loanid" type="number" placeholder="Ejemplo: 3">
+    <button id="get">Obtener Cronograma</button>
+    <p id="msg" class="error"></p>
+  </div>
+
+  <div class="content-box">
+    <h2>Cronograma de Pagos</h2>
+    <table id="tablaReportes">
+      <thead>
+        <tr>
+          <th>Cuota</th>
+          <th>Amortización</th>
+          <th>Interés</th>
+          <th>Cuota Total</th>
+          <th>Saldo</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <div class="btns">
+      <button onclick="exportarPDF()">📄 Exportar PDF</button>
+      <button onclick="exportarExcel()">📊 Exportar Excel</button>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+const api='/api';
+const token = localStorage.getItem('mhf_token');
+if(!token){ alert('Inicia sesión'); location.href='/login.html'; }
+
+document.getElementById('logout').onclick = ()=>{
+  localStorage.removeItem('mhf_token');
+  localStorage.removeItem('mhf_user');
+  window.location.href='/login.html';
+};
+
+const tablaBody = document.querySelector("#tablaReportes tbody");
+let planPagos = [];
+
+document.getElementById('get').onclick = async ()=>{
+  const id = document.getElementById('loanid').value;
+  if(!id) return;
+
+  const res = await fetch(api+'/loans/'+id+'/payments',{ headers:{ Authorization:'Bearer '+token }});
+  if(!res.ok){ document.getElementById('msg').innerText='❌ No encontrado'; return; }
+
+  document.getElementById('msg').innerText='';
+  planPagos = await res.json();
+
+  tablaBody.innerHTML = "";
+  planPagos.forEach((p,i)=>{
+    tablaBody.innerHTML += `
+      <tr>
+        <td>${i+1}</td>
+        <td>S/ ${p.amortization.toFixed(2)}</td>
+        <td>S/ ${p.interest.toFixed(2)}</td>
+        <td>S/ ${(p.amortization+p.interest).toFixed(2)}</td>
+        <td>S/ ${p.balance.toFixed(2)}</td>
+      </tr>`;
+  });
+};
+
+function exportarPDF(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.text("Reporte - Cronograma de Pagos", 20, 20);
+  let y = 40;
+  planPagos.forEach((p,i)=>{
+    doc.text(`Cuota ${i+1} | Amort: ${p.amortization.toFixed(2)} | Interés: ${p.interest.toFixed(2)} | Total: ${(p.interest+p.amortization).toFixed(2)} | Saldo: ${p.balance.toFixed(2)}`, 20, y);
+    y+=8;
+  });
+  doc.save("ReporteCredito.pdf");
+}
+
+function exportarExcel(){
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(planPagos);
+  XLSX.utils.book_append_sheet(wb, ws, "Cronograma");
+  XLSX.writeFile(wb, "ReporteCredito.xlsx");
+}
+</script>
+<!-- BOTONES DE VOZ -->
+<div id="voiceControls" style="position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:9999;">
+  <button id="playVoice" style="padding:10px 15px;border:none;border-radius:50px;background:#1a73e8;color:white;font-size:16px;cursor:pointer;">🔊 Explicación</button>
+  <button id="pauseVoice" style="padding:10px 15px;border:none;border-radius:50px;background:#fbbc05;color:white;font-size:16px;cursor:pointer;">⏸ Pausa</button>
+  <button id="resetVoice" style="padding:10px 15px;border:none;border-radius:50px;background:#34a853;color:white;font-size:16px;cursor:pointer;">⏮ Reiniciar</button>
+</div>
+
+<script>
+const speechText = `Bienvenido a la sección de Reportes y Exportación. 
+Aquí se puede generar y descargar el cronograma de pagos en PDF y Excel. 
+Se muestra la vista en pantalla del cronograma, resumen de cuotas, intereses y amortización total. 
+Los botones de exportación usan librerías como jsPDF y SheetJS, y la interfaz es clara y responsiva.`;
+
+const synth = window.speechSynthesis;
+let utterance = null;
+document.getElementById('playVoice').addEventListener('click', () => {
+  if(synth.speaking) return;
+  utterance = new SpeechSynthesisUtterance(speechText);
+  utterance.lang = 'es-PE';
+  synth.speak(utterance);
+});
+document.getElementById('pauseVoice').addEventListener('click', () => {
+  if(synth.speaking && !synth.paused) synth.pause();
+  else if(synth.paused) synth.resume();
+});
+document.getElementById('resetVoice').addEventListener('click', () => synth.cancel());
+</script>
+<!-- EFECTO RASTRO DE SIMBOLOS MATEMATICOS -->
+<style>
+  .math-trail {
+    position: fixed;
+    pointer-events: none;
+    font-size: 18px;
+    font-weight: bold;
+    opacity: 1;
+    transition: opacity 1.5s ease-out, transform 1.5s ease-out;
+    z-index: 9999;
+    color: #1a73e8;
+  }
+</style>
+
+<script>
+(function(){
+  const symbols = ['$', '%', 'X', '+', '-', '=', '¥', '€', '£', '¢', '∆', '∑', 'π', '√', '∞', '≈', '÷', '×', '<', '>', '!', '@', '#', '&', '^', ':', ';', '?', '|', '~', '•'];
+  
+  function createTrail(x, y) {
+    const span = document.createElement('span');
+    span.classList.add('math-trail');
+    span.style.left = x + 'px';
+    span.style.top = y + 'px';
+    span.style.fontSize = (12 + Math.random() * 16) + 'px';
+    span.style.color = `hsl(${Math.random()*360}, 70%, 50%)`;
+    span.innerText = symbols[Math.floor(Math.random() * symbols.length)];
+    document.body.appendChild(span);
+
+    // Animación de desplazamiento y desaparición
+    setTimeout(() => {
+      span.style.transform = `translate(${Math.random()*30-15}px, ${Math.random()*30-15}px) rotate(${Math.random()*360}deg)`;
+      span.style.opacity = 0;
+    }, 50);
+
+    setTimeout(() => document.body.removeChild(span), 1600);
+  }
+
+  // Movimiento de mouse
+  window.addEventListener('mousemove', (e) => {
+    createTrail(e.clientX, e.clientY);
+  });
+
+  // Movimiento táctil (mobile)
+  window.addEventListener('touchmove', (e) => {
+    for(let i=0; i<e.touches.length; i++) {
+      createTrail(e.touches[i].clientX, e.touches[i].clientY);
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
