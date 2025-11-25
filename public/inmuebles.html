@@ -208,6 +208,7 @@ body {display: flex; height: 100vh; background: #f4f6f9;}
       <table>
         <thead>
           <tr>
+            <th>ID</th>
             <th>Proyecto</th>
             <th>Dirección</th>
             <th>Área (m²)</th>
@@ -240,19 +241,20 @@ body {display: flex; height: 100vh; background: #f4f6f9;}
       const res = await fetch(api+'/properties',{ headers:{ Authorization:'Bearer '+token }});
       const props = await res.json();
       document.getElementById('list').innerHTML = props.map(p=>`
-        <tr>
-          <td>${p.project_name}</td>
-          <td>${p.address}</td>
-          <td>${p.area}</td>
-          <td>${p.rooms}</td>
-          <td>${p.currency === 'PEN' ? 'S/ ' : '$'}${p.price}</td>
-          <td>${p.currency}</td>
-          <td>${p.status}</td>
-          <td class="actions">
-            <button class="edit" onclick='edit(${JSON.stringify(p)})'>Editar</button>
-            <button class="delete" onclick="del(${p.id})">Eliminar</button>
-          </td>
-        </tr>`).join('');
+          <tr>
+            <td>${p.id}</td>
+            <td>${p.project_name}</td>
+            <td>${p.address}</td>
+            <td>${p.area}</td>
+            <td>${p.rooms}</td>
+            <td>${p.currency === 'PEN' ? 'S/ ' : '$'}${p.price}</td>
+            <td>${p.currency}</td>
+            <td>${p.status}</td>
+            <td class="actions">
+              <button class="edit" onclick='edit(${JSON.stringify(p)})'>Editar</button>
+              <button class="delete" onclick="del(${p.id})">Eliminar</button>
+            </td>
+          </tr>`).join('');
     }
     load();
 

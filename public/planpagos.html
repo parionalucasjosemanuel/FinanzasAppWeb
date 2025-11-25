@@ -97,6 +97,16 @@ body {display: flex; height: 100vh; background: #f4f6f9;}
 
   <div class="content-box">
     <form id="pagoForm">
+      <label>Cliente</label>
+      <select id="clientSelect">
+        <option value="">Cargando clientes...</option>
+      </select>
+
+      <label>Propiedad</label>
+      <select id="propertySelect">
+        <option value="">Cargando propiedades...</option>
+      </select>
+
       <label>Monto del Préstamo</label>
       <input type="number" id="monto" required>
 
@@ -151,13 +161,34 @@ const resumen = document.getElementById("resumen");
 const msg = document.getElementById("msg");
 const ok = document.getElementById("ok");
 
+// Cargar clientes y propiedades para los selects
+async function loadClientsAndProperties(){
+  try{
+    const clientsRes = await fetch(api + '/clients', { headers: { Authorization: 'Bearer ' + token } });
+    const propsRes = await fetch(api + '/properties', { headers: { Authorization: 'Bearer ' + token } });
+    const clients = await clientsRes.json();
+    const props = await propsRes.json();
+
+    const clientSel = document.getElementById('clientSelect');
+    clientSel.innerHTML = '<option value="">Seleccione un cliente...</option>' + clients.map(c=>`<option value="${c.id}">${c.id} - ${c.full_name} (${c.dni})</option>`).join('');
+
+    const propSel = document.getElementById('propertySelect');
+    propSel.innerHTML = '<option value="">Seleccione una propiedad...</option>' + props.map(p=>`<option value="${p.id}">${p.id} - ${p.project_name} - ${p.currency === 'PEN' ? 'S/ ' : '$'}${p.price}</option>`).join('');
+  }catch(err){
+    console.error('Error cargando clientes/propiedades', err);
+    document.getElementById('clientSelect').innerHTML = '<option value="">Error cargando clientes</option>';
+    document.getElementById('propertySelect').innerHTML = '<option value="">Error cargando propiedades</option>';
+  }
+}
+
+loadClientsAndProperties();
+
 pagoForm.onsubmit = async function(e){
   e.preventDefault();
-
-  const clientId = parseInt(prompt("🧍 ID del Cliente (ver en Clientes):"));
-  const propertyId = parseInt(prompt("🏠 ID de la Propiedad (ver en Inmuebles):"));
+  const clientId = parseInt(document.getElementById('clientSelect').value);
+  const propertyId = parseInt(document.getElementById('propertySelect').value);
   if(!clientId || !propertyId){
-    msg.innerText="Debes ingresar ambos IDs.";
+    msg.innerText = "Debes seleccionar un cliente y una propiedad.";
     return;
   }
 
