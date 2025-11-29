@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="es">
+<head>
+   <link rel="icon" type="image/png" href="icon.png">
+<meta charset='utf-8'>
+<meta name='viewport' content='width=device-width,initial-scale=1'>
+<title>Plan de Pagos - MiHogarFinanzas</title>
+<link rel="stylesheet" href="assets.css">
+<style>
+  .content-box {background:#fff;padding:1.5rem;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.1);margin-bottom:2rem;}
+  label {display:block;margin-top:0.8rem;font-size:0.9rem;color:#333;}
+  input, select {width:100%;padding:0.7rem;border:1px solid #ccc;border-radius:8px;margin-top:0.3rem;}
+  button {margin-top:1rem;padding:0.8rem 1.5rem;border:none;border-radius:8px;background:#1a73e8;color:white;font-weight:bold;cursor:pointer;transition:0.3s;}
+  button:hover {background:#0f5dd1;}
+  
+  /* Tabla responsiva */
+  .table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  table {width:100%;border-collapse:collapse;margin-top:1rem;min-width:500px;}
+  th,td {padding:0.8rem;text-align:center;border-bottom:1px solid #ddd;white-space:nowrap;}
+  th {background:#1a73e8;color:white;}
+  tr:hover {background:#f1f1f1;}
+  .summary {margin-top:1rem;padding:1rem;background:#e8f0fe;border-left:5px solid #1a73e8;border-radius:8px;}
+  .success{margin-top:1rem;color:green;font-weight:bold;}
+  .error{color:red;margin-top:0.5rem;}
+
+  * {margin: 0; padding: 0; box-sizing: border-box; font-family: "Segoe UI", sans-serif;}
+body {display: flex; min-height: 100vh; background: #f4f6f9;}
+
+.sidebar {
+  width: 250px; background: #1a73e8; color: white;
+  display: flex; flex-direction: column; padding: 1rem;
+  flex-shrink: 0;
+}
+
+.sidebar h3 {text-align: center; margin-bottom: 2rem;}
+
+.sidebar a {
+  text-decoration: none; color: white; padding: 0.6rem 0.8rem;
+  display: block; border-radius: 8px; transition: 0.3s;
+}
+
+.sidebar a:hover {background: #0f5dd1;}
+
+.main {
+  flex: 1; padding: 2rem; overflow-y: auto; overflow-x: hidden;
+  min-width: 0;
+}
+
+.logout {margin-top: auto; text-align: center;}
+
+.logout button {
+  background: red; border: none; color: white; padding: 0.7rem 1rem;
+  border-radius: 8px; cursor: pointer; transition: 0.3s; width: 100%;
+}
+
+.logout button:hover {background: darkred;}
+.brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 2rem;
+}
+
+.brand img {
+  width: 35px;       /* tamaño del logo */
+  height: 35px;
+  border-radius: 50%; /* si quieres redondo, si no: borra esta línea */
+  object-fit: cover;
+}
+
+.brand span {
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  body { flex-direction: column; }
+  .sidebar {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 0.5rem;
+  }
+  .sidebar a { padding: 0.5rem 0.8rem; margin: 0.2rem; font-size: 0.85rem; }
+  .brand { width: 100%; margin-bottom: 0.5rem; }
+  .logout { width: 100%; margin-top: 0.5rem; }
+  .main { padding: 1rem; }
+  .content-box { padding: 1rem; }
+}
+
+@media (max-width: 600px) {
+  .sidebar a { flex: 1 1 45%; text-align: center; font-size: 0.8rem; }
+  h1 { font-size: 1.3rem; }
+  h2 { font-size: 1.1rem; }
+  button { padding: 0.6rem 1rem; font-size: 0.9rem; }
+  label { font-size: 0.85rem; }
+}
+
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="brand">
+  <img src="logo.png" alt="Logo">
+  <span>MiHogarFinanzas</span>
+</div>
+  <a href="/dashboard.html">🏠 Dashboard</a>
+  <a href="/clientes.html">👤 Clientes</a>
+  <a href="/inmuebles.html">🏘️ Unidades</a>
+  <a href="/configuracion.html">⚙️ Configuración</a>
+  <a href="/planpagos.html">📊 Plan de Pagos</a>
+  <a href="/indicadores.html">📈 Indicadores</a>
+  <a href="/reportes.html">🗂 Reportes</a>
+  <a href="/ayuda.html">❓ Ayuda</a>
+
+  <div class="logout">
+    <button id="logout">Cerrar Sesión</button>
+  </div>
+</div>
+
+<div class="main">
+  <h1>Generación del Plan de Pagos</h1>
+
+  <div class="content-box">
+    <form id="pagoForm">
+      <label>Cliente</label>
+      <select id="clientSelect">
+        <option value="">Cargando clientes...</option>
+      </select>
+
+      <label>Propiedad</label>
+      <select id="propertySelect">
+        <option value="">Cargando propiedades...</option>
+      </select>
+
+      <label>Monto del Préstamo</label>
+      <input type="number" id="monto" required>
+
+      <label>Plazo (meses)</label>
+      <input type="number" id="plazo" required>
+
+      <label>Tasa de Interés Anual (%)</label>
+      <input type="number" id="tasa" step="0.01" required>
+
+      <label>Tipo de Tasa</label>
+      <select id="tipoTasa">
+        <option value="efectiva">Efectiva (TEA)</option>
+        <option value="nominal">Nominal (TIN)</option>
+      </select>
+
+      <label>Capitalización (solo para tasa nominal)</label>
+      <select id="capitalizacion">
+        <option value="mensual">Mensual</option>
+        <option value="trimestral">Trimestral</option>
+        <option value="semestral">Semestral</option>
+        <option value="anual">Anual</option>
+      </select>
+
+      <label>Moneda</label>
+      <select id="moneda">
+        <option value="PEN">Soles (PEN)</option>
+        <option value="USD">Dólares (USD)</option>
+      </select>
+
+      <label>Periodo de Gracia</label>
+      <select id="periodoGracia">
+        <option value="ninguno">Ninguno</option>
+        <option value="total">Gracia Total (no paga nada, intereses se capitalizan)</option>
+        <option value="parcial">Gracia Parcial (solo paga intereses)</option>
+      </select>
+
+      <label>Meses de Gracia</label>
+      <input type="number" id="mesesGracia" min="0" max="24" value="0">
+
+      <label>¿Aplica Bono Techo Propio?</label>
+      <select id="bonoTecho">
+        <option value="no">No</option>
+        <option value="si">Sí</option>
+      </select>
+
+      <label>Monto del Bono (si aplica)</label>
+      <input type="number" id="bonoMonto" value="0" min="0">
+
+      <label>Fecha de Inicio</label>
+      <input type="date" id="fecha">
+
+      <label>Tasa de Descuento Anual (%) - COK</label>
+      <input type="number" id="tasaDescuento" step="0.01" value="20" min="0" max="100" 
+             title="Costo de Oportunidad del Capital para calcular VAN">
+      <small style="color:#666;">Tasa usada para descontar los flujos futuros (ej: 20%)</small>
+
+      <button type="submit">Generar Plan y Guardar Crédito</button>
+      <p id="msg" class="error"></p>
+      <p id="ok" class="success" style="display:none;"></p>
+    </form>
+  </div>
+
+  <div class="content-box">
+    <h2>Cronograma de Pagos</h2>
+    <div id="resumen" class="summary" style="display:none;"></div>
+    
+    <!-- Indicadores Financieros VAN/TIR -->
+    <div id="indicadoresFinancieros" class="summary" style="display:none; margin-top:1rem; background:#e8f5e9; border-left-color:#34a853;">
+      <h3>📈 Indicadores de Rentabilidad</h3>
+      <div id="indicadoresContent"></div>
+    </div>
+    
+    <div class="table-responsive">
+      <table id="tablaPagos">
+        <thead>
+        <tr>
+          <th>Cuota</th>
+          <th>Tipo</th>
+          <th>Amortización</th>
+          <th>Interés</th>
+          <th>Cuota Total</th>
+          <th>Saldo</th>
+        </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const api='/api';
+const token = localStorage.getItem('mhf_token');
+if(!token){ alert('Inicia sesión'); location.href='/login.html'; }
+
+document.getElementById('logout').onclick = ()=>{
+  localStorage.removeItem('mhf_token');
+  localStorage.removeItem('mhf_user');
+  window.location.href='/login.html';
+};
+
+const pagoForm = document.getElementById("pagoForm");
+const tabla = document.querySelector("#tablaPagos tbody");
+const resumen = document.getElementById("resumen");
+const msg = document.getElementById("msg");
+const ok = document.getElementById("ok");
+
+// Cargar clientes y propiedades para los selects
+async function loadClientsAndProperties(){
+  try{
+    const clientsRes = await fetch(api + '/clients', { headers: { Authorization: 'Bearer ' + token } });
+    const propsRes = await fetch(api + '/properties', { headers: { Authorization: 'Bearer ' + token } });
+    const clients = await clientsRes.json();
+    const props = await propsRes.json();
+
+    const clientSel = document.getElementById('clientSelect');
+    clientSel.innerHTML = '<option value="">Seleccione un cliente...</option>' + clients.map(c=>`<option value="${c.id}">${c.id} - ${c.full_name} (${c.dni})</option>`).join('');
+
+    const propSel = document.getElementById('propertySelect');
+    propSel.innerHTML = '<option value="">Seleccione una propiedad...</option>' + props.map(p=>`<option value="${p.id}">${p.id} - ${p.project_name} - ${p.currency === 'PEN' ? 'S/ ' : '$'}${p.price}</option>`).join('');
+  }catch(err){
+    console.error('Error cargando clientes/propiedades', err);
+    document.getElementById('clientSelect').innerHTML = '<option value="">Error cargando clientes</option>';
+    document.getElementById('propertySelect').innerHTML = '<option value="">Error cargando propiedades</option>';
+  }
+}
+
+loadClientsAndProperties();
+
+// Cargar configuración guardada si existe
+function loadSavedConfig() {
+  const cfg = localStorage.getItem('mhf_config');
+  if (cfg) {
+    const config = JSON.parse(cfg);
+    if (config.moneda) document.getElementById('moneda').value = config.moneda;
+    if (config.tipo_tasa) document.getElementById('tipoTasa').value = config.tipo_tasa;
+    if (config.capitalizacion) document.getElementById('capitalizacion').value = config.capitalizacion;
+    if (config.periodo_gracia) document.getElementById('periodoGracia').value = config.periodo_gracia;
+    if (config.meses_gracia) document.getElementById('mesesGracia').value = config.meses_gracia;
+  }
+}
+loadSavedConfig();
+
+// Funciones de cálculo financiero (año comercial 360 días, meses 30 días)
+function monthlyRateFromAnnual(annualRate) {
+  return Math.pow(1 + annualRate, 30/360) - 1;
+}
+
+function nominalToEffective(nominalRate, capitalizacion) {
+  const periodos = { 'mensual': 12, 'trimestral': 4, 'semestral': 2, 'anual': 1 };
+  const n = periodos[capitalizacion] || 12;
+  return Math.pow(1 + nominalRate / n, n) - 1;
+}
+
+function frenchScheduleLocal(amount, months, annualRate, tipoGracia, mesesGracia) {
+  const r = monthlyRateFromAnnual(annualRate);
+  let balance = amount;
+  let schedule = [];
+  
+  // Meses de gracia
+  for (let i = 1; i <= mesesGracia; i++) {
+    const interest = balance * r;
+    if (tipoGracia === 'total') {
+      balance += interest;
+      schedule.push({ installment_number: i, amortization: 0, interest: 0, total: 0, balance: balance, tipo: 'Gracia Total' });
+    } else if (tipoGracia === 'parcial') {
+      schedule.push({ installment_number: i, amortization: 0, interest: interest, total: interest, balance: balance, tipo: 'Gracia Parcial' });
+    }
+  }
+  
+  const mesesRestantes = months - mesesGracia;
+  if (mesesRestantes <= 0) return { cuota: 0, schedule };
+  
+  const cuota = balance * (r * Math.pow(1 + r, mesesRestantes)) / (Math.pow(1 + r, mesesRestantes) - 1);
+  
+  for (let i = mesesGracia + 1; i <= months; i++) {
+    const interest = balance * r;
+    let amort = cuota - interest;
+    
+    // En la última cuota, ajustar para que el saldo quede exactamente en 0
+    if (i === months) {
+      amort = balance;
+    }
+    
+    balance = Math.max(0, balance - amort);
+    const totalCuota = (i === months) ? amort + interest : cuota;
+    
+    schedule.push({ installment_number: i, amortization: amort, interest: interest, total: totalCuota, balance: balance, tipo: 'Normal' });
+  }
+  
+  return { cuota, schedule };
+}
+
+// Calcular VAN (Valor Actual Neto)
+function calcularVAN(montoInicial, flujos, tasaDescuentoAnual) {
+  // Convertir tasa anual a mensual: (1 + tasa_anual)^(1/12) - 1
+  const tasaMensual = Math.pow(1 + tasaDescuentoAnual, 1/12) - 1;
+  
+  // VNA = Σ(flujo_i / (1 + r)^i)
+  let vna = 0;
+  for (let i = 0; i < flujos.length; i++) {
+    vna += flujos[i] / Math.pow(1 + tasaMensual, i + 1);
+  }
+  
+  // VAN = -Inversión + VNA
+  return { van: -montoInicial + vna, tasaMensual };
+}
+
+// Calcular TIR (Tasa Interna de Retorno) usando método de bisección
+function calcularTIR(montoInicial, flujos) {
+  function npv(rate) {
+    let sum = -montoInicial;
+    for (let i = 0; i < flujos.length; i++) {
+      sum += flujos[i] / Math.pow(1 + rate, i + 1);
+    }
+    return sum;
+  }
+  
+  let low = 0, high = 1, mid;
+  for (let i = 0; i < 100; i++) {
+    mid = (low + high) / 2;
+    if (npv(mid) > 0) low = mid;
+    else high = mid;
+  }
+  
+  return mid; // TIR mensual
+}
+
+// Funciones de validación para Plan de Pagos
+function validarMonto(monto) {
+  if (!monto || isNaN(monto) || monto <= 0) return 'El monto debe ser mayor a 0';
+  if (monto > 10000000) return 'El monto no puede superar 10,000,000';
+  return null;
+}
+
+function validarPlazo(plazo) {
+  if (!plazo || isNaN(plazo) || plazo < 1) return 'El plazo debe ser al menos 1 mes';
+  if (plazo > 360) return 'El plazo no puede superar 360 meses (30 años)';
+  return null;
+}
+
+function validarTasa(tasa) {
+  if (!tasa || isNaN(tasa) || tasa <= 0) return 'La tasa debe ser mayor a 0%';
+  if (tasa > 100) return 'La tasa no puede superar 100%';
+  return null;
+}
+
+function validarMesesGracia(mesesGracia, plazo, tipoGracia) {
+  if (tipoGracia !== 'ninguno') {
+    if (!mesesGracia || mesesGracia <= 0) return 'Debe especificar los meses de gracia';
+    if (mesesGracia >= plazo) return 'Los meses de gracia deben ser menores al plazo';
+    if (mesesGracia > 24) return 'El periodo de gracia no puede superar 24 meses';
+  }
+  return null;
+}
+
+function validarBono(bonoMonto, montoOriginal, aplicaBono) {
+  if (aplicaBono) {
+    if (!bonoMonto || bonoMonto <= 0) return 'Debe especificar el monto del bono';
+    if (bonoMonto >= montoOriginal) return 'El bono no puede ser mayor o igual al monto del préstamo';
+    if (bonoMonto > 40250) return 'El Bono Techo Propio no puede superar S/ 40,250';
+  }
+  return null;
+}
+
+function validarFecha(fecha) {
+  if (!fecha) return 'Debe seleccionar una fecha de inicio';
+  return null;
+}
+
+pagoForm.onsubmit = async function(e){
+  e.preventDefault();
+  const clientId = parseInt(document.getElementById('clientSelect').value);
+  const propertyId = parseInt(document.getElementById('propertySelect').value);
+  
+  // Validar selecciones
+  if(!clientId) {
+    msg.innerText = "❌ Debe seleccionar un cliente";
+    return;
+  }
+  if(!propertyId) {
+    msg.innerText = "❌ Debe seleccionar una propiedad";
+    return;
+  }
+
+  msg.innerText="";
+  ok.style.display="none";
+
+  const montoOriginal = parseFloat(document.getElementById("monto").value);
+  const plazo = parseInt(document.getElementById("plazo").value);
+  const tasaIngresada = parseFloat(document.getElementById("tasa").value);
+  const fecha = document.getElementById("fecha").value;
+  
+  const tipoTasa = document.getElementById("tipoTasa").value;
+  const capitalizacion = document.getElementById("capitalizacion").value;
+  const moneda = document.getElementById("moneda").value;
+  const periodoGracia = document.getElementById("periodoGracia").value;
+  const mesesGracia = parseInt(document.getElementById("mesesGracia").value) || 0;
+  const bonoTecho = document.getElementById("bonoTecho").value === 'si';
+  const bonoMonto = parseFloat(document.getElementById("bonoMonto").value) || 0;
+  
+  // Validaciones completas
+  let error = validarMonto(montoOriginal) || 
+              validarPlazo(plazo) || 
+              validarTasa(tasaIngresada) ||
+              validarFecha(fecha) ||
+              validarMesesGracia(mesesGracia, plazo, periodoGracia) ||
+              validarBono(bonoMonto, montoOriginal, bonoTecho);
+  
+  if (error) {
+    msg.innerText = "❌ " + error;
+    return;
+  }
+  
+  // Convertir tasa a decimal
+  const tasaDecimal = tasaIngresada / 100;
+  
+  // Aplicar bono si corresponde
+  const montoReal = bonoTecho ? montoOriginal - bonoMonto : montoOriginal;
+  if (montoReal <= 0) {
+    msg.innerText = "❌ El monto después del bono debe ser mayor a 0";
+    return;
+  }
+  
+  // Convertir tasa nominal a efectiva si es necesario
+  let tasaEfectiva = tasaDecimal;
+  if (tipoTasa === 'nominal') {
+    tasaEfectiva = nominalToEffective(tasaDecimal, capitalizacion);
+  }
+  
+  // Calcular cronograma
+  const { cuota, schedule } = frenchScheduleLocal(montoReal, plazo, tasaEfectiva, periodoGracia, mesesGracia);
+  
+  const simbolo = moneda === 'PEN' ? 'S/' : '$';
+  let totalInteres = 0;
+  let totalAmort = 0;
+  let totalPagado = 0;
+
+  tabla.innerHTML = "";
+
+  for(const s of schedule){
+    totalInteres += s.interest;
+    totalAmort += s.amortization;
+    totalPagado += s.total;
+
+    tabla.innerHTML += `
+      <tr style="${s.tipo !== 'Normal' ? 'background:#fff3cd;' : ''}">
+        <td>${s.installment_number}</td>
+        <td>${s.tipo}</td>
+        <td>${simbolo} ${s.amortization.toFixed(2)}</td>
+        <td>${simbolo} ${s.interest.toFixed(2)}</td>
+        <td>${simbolo} ${s.total.toFixed(2)}</td>
+        <td>${simbolo} ${s.balance.toFixed(2)}</td>
+      </tr>`;
+  }
+
+  resumen.style.display="block";
+  resumen.innerHTML = `
+    <h3>Resumen del Crédito</h3>
+    <p><b>Monto Original:</b> ${simbolo} ${montoOriginal.toFixed(2)}</p>
+    ${bonoTecho ? `<p><b>Bono Techo Propio:</b> - ${simbolo} ${bonoMonto.toFixed(2)}</p>` : ''}
+    <p><b>Monto Financiado:</b> ${simbolo} ${montoReal.toFixed(2)}</p>
+    <p><b>Tasa Ingresada (${tipoTasa}):</b> ${(tasaIngresada).toFixed(2)}%</p>
+    ${tipoTasa === 'nominal' ? `<p><b>Tasa Efectiva Anual (TEA):</b> ${(tasaEfectiva*100).toFixed(4)}%</p>` : ''}
+    <p><b>Cuota Mensual (periodo normal):</b> ${simbolo} ${cuota.toFixed(2)}</p>
+    <p><b>Periodo de Gracia:</b> ${periodoGracia} (${mesesGracia} meses)</p>
+    <p><b>Total Amortizado:</b> ${simbolo} ${totalAmort.toFixed(2)}</p>
+    <p><b>Total Intereses:</b> ${simbolo} ${totalInteres.toFixed(2)}</p>
+    <p><b>Total Pagado:</b> ${simbolo} ${totalPagado.toFixed(2)}</p>
+  `;
+
+  // === CALCULAR INDICADORES VAN, TIR, TCEA ===
+  const tasaDescuento = parseFloat(document.getElementById("tasaDescuento").value) / 100 || 0.20;
+  
+  // Extraer flujos de caja del cronograma (cuotas totales)
+  const flujosCaja = schedule.map(s => s.total);
+  
+  // Calcular VAN
+  const { van, tasaMensual } = calcularVAN(montoReal, flujosCaja, tasaDescuento);
+  
+  // Calcular TIR
+  const tirMensual = calcularTIR(montoReal, flujosCaja);
+  const tirAnual = Math.pow(1 + tirMensual, 12) - 1; // TCEA
+  
+  // Mostrar indicadores
+  const indicadoresDiv = document.getElementById('indicadoresFinancieros');
+  const indicadoresContent = document.getElementById('indicadoresContent');
+  indicadoresDiv.style.display = 'block';
+  
+  indicadoresContent.innerHTML = `
+    <p><b>Tasa de Descuento (COK):</b> ${(tasaDescuento * 100).toFixed(2)}% anual → ${(tasaMensual * 100).toFixed(5)}% mensual</p>
+    <p><b>VAN del Préstamo:</b> ${simbolo} ${van.toFixed(2)} 
+      <span style="color:${van > 0 ? 'green' : 'red'};">${van > 0 ? '✅ Genera valor' : '⚠️ Por debajo del COK'}</span>
+    </p>
+    <p><b>TIR Mensual:</b> ${(tirMensual * 100).toFixed(5)}%</p>
+    <p><b>TIR Anual (TCEA):</b> ${(tirAnual * 100).toFixed(2)}%</p>
+    <hr style="margin:0.5rem 0;">
+    <small>
+      <b>Interpretación:</b><br>
+      • Si VAN > 0: La operación genera valor por encima del costo de oportunidad (${(tasaDescuento * 100).toFixed(0)}%)<br>
+      • La TCEA (${(tirAnual * 100).toFixed(2)}%) representa el costo efectivo real del crédito para el cliente
+    </small>
+  `;
+
+  // Guardar en backend con todos los parámetros
+  const tasaDescuentoVal = parseFloat(document.getElementById("tasaDescuento").value) || 20;
+  
+  const res = await fetch(api+'/loans',{
+    method:'POST',
+    headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
+    body:JSON.stringify({
+      clientId,
+      propertyId,
+      amount: montoOriginal,
+      term_months: plazo,
+      annual_rate: tasaIngresada,
+      start_date: fecha,
+      bono_techo: bonoTecho,
+      bono_monto: bonoMonto,
+      tipo_tasa: tipoTasa,
+      capitalizacion: capitalizacion,
+      periodo_gracia: periodoGracia,
+      meses_gracia: mesesGracia,
+      moneda: moneda,
+      tasa_descuento: tasaDescuentoVal
+    })
+  });
+
+  const js = await res.json();
+  if(!res.ok){ msg.innerText=js.message || "Error"; return; }
+
+  ok.style.display="block";
+  ok.innerText="✅ Crédito guardado correctamente. ID Crédito: "+js.loan.id;
+};
+</script>
+<!-- BOTONES DE VOZ -->
+<div id="voiceControls" style="position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:9999;">
+  <button id="playVoice" style="padding:10px 15px;border:none;border-radius:50px;background:#1a73e8;color:white;font-size:16px;cursor:pointer;">🔊 Explicación</button>
+  <button id="pauseVoice" style="padding:10px 15px;border:none;border-radius:50px;background:#fbbc05;color:white;font-size:16px;cursor:pointer;">⏸ Pausa</button>
+  <button id="resetVoice" style="padding:10px 15px;border:none;border-radius:50px;background:#34a853;color:white;font-size:16px;cursor:pointer;">⏮ Reiniciar</button>
+</div>
+
+<script>
+const speechText = `Bienvenido a la Generación del Plan de Pagos. 
+Esta sección calcula el cronograma de pagos de un crédito hipotecario bajo el método francés, generando cuotas fijas. 
+Se consideran el monto del préstamo, plazo en meses, tasa de interés y la configuración de moneda, tasa y periodo de gracia. 
+El resultado incluye la cuota mensual, desglose de amortización, intereses y saldo restante. 
+La tabla dinámica permite visualizar todo de forma clara y responsiva.`;
+
+const synth = window.speechSynthesis;
+let utterance = null;
+document.getElementById('playVoice').addEventListener('click', () => {
+  if(synth.speaking) return;
+  utterance = new SpeechSynthesisUtterance(speechText);
+  utterance.lang = 'es-PE';
+  synth.speak(utterance);
+});
+document.getElementById('pauseVoice').addEventListener('click', () => {
+  if(synth.speaking && !synth.paused) synth.pause();
+  else if(synth.paused) synth.resume();
+});
+document.getElementById('resetVoice').addEventListener('click', () => synth.cancel());
+</script>
+<!-- EFECTO RASTRO DE SIMBOLOS MATEMATICOS -->
+<style>
+  .math-trail {
+    position: fixed;
+    pointer-events: none;
+    font-size: 18px;
+    font-weight: bold;
+    opacity: 1;
+    transition: opacity 1.5s ease-out, transform 1.5s ease-out;
+    z-index: 9999;
+    color: #1a73e8;
+  }
+</style>
+
+<script>
+(function(){
+  const symbols = ['$', '%', 'X', '+', '-', '=', '¥', '€', '£', '¢', '∆', '∑', 'π', '√', '∞', '≈', '÷', '×', '<', '>', '!', '@', '#', '&', '^', ':', ';', '?', '|', '~', '•'];
+  
+  function createTrail(x, y) {
+    const span = document.createElement('span');
+    span.classList.add('math-trail');
+    span.style.left = x + 'px';
+    span.style.top = y + 'px';
+    span.style.fontSize = (12 + Math.random() * 16) + 'px';
+    span.style.color = `hsl(${Math.random()*360}, 70%, 50%)`;
+    span.innerText = symbols[Math.floor(Math.random() * symbols.length)];
+    document.body.appendChild(span);
+
+    // Animación de desplazamiento y desaparición
+    setTimeout(() => {
+      span.style.transform = `translate(${Math.random()*30-15}px, ${Math.random()*30-15}px) rotate(${Math.random()*360}deg)`;
+      span.style.opacity = 0;
+    }, 50);
+
+    setTimeout(() => document.body.removeChild(span), 1600);
+  }
+
+  // Movimiento de mouse
+  window.addEventListener('mousemove', (e) => {
+    createTrail(e.clientX, e.clientY);
+  });
+
+  // Movimiento táctil (mobile)
+  window.addEventListener('touchmove', (e) => {
+    for(let i=0; i<e.touches.length; i++) {
+      createTrail(e.touches[i].clientX, e.touches[i].clientY);
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
