@@ -13,33 +13,42 @@
   input {width:100%;padding:0.7rem;border:1px solid #ccc;border-radius:8px;margin-top:0.3rem;}
   button {margin-top:1rem;padding:0.8rem 1.5rem;border:none;border-radius:8px;background:#1a73e8;color:white;font-weight:bold;cursor:pointer;transition:0.3s;}
   button:hover {background:#0f5dd1;}
-  table {width:100%;border-collapse:collapse;margin-top:1rem;}
-  th,td {padding:0.8rem;text-align:center;border-bottom:1px solid #ddd;}
-  th {background:#1a73e8;color:white;}
+  
+  /* Tabla responsiva */
+  .table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  table {width:100%;border-collapse:collapse;margin-top:1rem;min-width:600px;}
+  th,td {padding:0.8rem;text-align:center;border-bottom:1px solid #ddd;white-space:nowrap;}
+  th {background:#1a73e8;color:white;position:sticky;top:0;}
   tr:hover {background:#f1f1f1;}
   .btns {margin-top:1rem;}
   .btns button {margin-right:0.8rem;}
   .error{color:red;margin-top:0.5rem;}
 
   * {margin: 0; padding: 0; box-sizing: border-box; font-family: "Segoe UI", sans-serif;}
-body {display: flex; height: 100vh; background: #f4f6f9;}
+body {display: flex; min-height: 100vh; background: #f4f6f9;}
 
 .sidebar {
   width: 250px; background: #1a73e8; color: white;
   display: flex; flex-direction: column; padding: 1rem;
+  flex-shrink: 0;
 }
 
 .sidebar h3 {text-align: center; margin-bottom: 2rem;}
 
 .sidebar a {
-  text-decoration: none; color: white; padding: 0.8rem;
-  margin: 0.3rem 0; display: block; border-radius: 8px; transition: 0.3s;
+  text-decoration: none; color: white; padding: 0.6rem 0.8rem;
+  display: block; border-radius: 8px; transition: 0.3s;
 }
 
 .sidebar a:hover {background: #0f5dd1;}
 
 .main {
-  flex: 1; padding: 2rem; overflow-y: auto;
+  flex: 1; padding: 2rem; overflow-y: auto; overflow-x: hidden;
+  min-width: 0;
 }
 
 .logout {margin-top: auto; text-align: center;}
@@ -70,6 +79,30 @@ body {display: flex; height: 100vh; background: #f4f6f9;}
   font-size: 1.1rem;
 }
 
+/* Responsive */
+@media (max-width: 900px) {
+  body { flex-direction: column; }
+  .sidebar {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 0.5rem;
+  }
+  .sidebar a { padding: 0.5rem 0.8rem; margin: 0.2rem; font-size: 0.85rem; }
+  .brand { width: 100%; margin-bottom: 0.5rem; }
+  .logout { width: 100%; margin-top: 0.5rem; }
+  .main { padding: 1rem; }
+  .content-box { padding: 1rem; }
+}
+
+@media (max-width: 600px) {
+  .sidebar a { flex: 1 1 45%; text-align: center; font-size: 0.8rem; }
+  h1 { font-size: 1.3rem; }
+  h2 { font-size: 1.1rem; }
+  button { padding: 0.6rem 1rem; font-size: 0.9rem; }
+}
+
 </style>
 </head>
 <body>
@@ -98,31 +131,48 @@ body {display: flex; height: 100vh; background: #f4f6f9;}
   <h1>Reportes y Exportación</h1>
 
   <div class="content-box">
-    <label>ID del Crédito</label>
-    <input id="loanid" type="number" placeholder="Ejemplo: 3">
-    <button id="get">Obtener Cronograma</button>
+    <label>Seleccionar Crédito</label>
+    <select id="loanSelect" style="width:100%;padding:0.7rem;border:1px solid #ccc;border-radius:8px;margin-top:0.3rem;">
+      <option value="">Cargando créditos...</option>
+    </select>
+    
+    <div id="loanInfo" style="margin-top:1rem;padding:1rem;background:#e8f0fe;border-radius:8px;display:none;">
+      <h3 style="margin-bottom:0.5rem;color:#1a73e8;">Información del Crédito</h3>
+      <div id="loanDetails"></div>
+    </div>
+    
+    <button id="get" style="margin-top:1rem;">Obtener Cronograma</button>
     <p id="msg" class="error"></p>
   </div>
 
-  <div class="content-box">
+  <div class="content-box" id="cronogramaBox" style="display:none;">
     <h2>Cronograma de Pagos</h2>
-    <table id="tablaReportes">
-      <thead>
-        <tr>
-          <th>Cuota</th>
-          <th>Amortización</th>
-          <th>Interés</th>
-          <th>Cuota Total</th>
-          <th>Saldo</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-
-    <div class="btns">
-      <button onclick="exportarPDF()">📄 Exportar PDF</button>
-      <button onclick="exportarExcel()">📊 Exportar Excel</button>
+    
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:1rem;">
+      <div id="resumenCredito" style="flex:1;min-width:280px;padding:1rem;background:#f0f7ff;border-radius:8px;"></div>
+      <div class="btns" style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+        <button onclick="exportarPDF()">📄 Exportar PDF</button>
+        <button onclick="exportarExcel()">📊 Exportar Excel</button>
+      </div>
     </div>
+    
+    <div class="table-responsive">
+      <table id="tablaReportes">
+        <thead>
+          <tr>
+            <th>Cuota</th>
+            <th>Tipo</th>
+            <th>Amortización</th>
+            <th>Interés</th>
+            <th>Cuota Total</th>
+            <th>Saldo</th>
+            <th>Fecha Venc.</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
   </div>
 
 </div>
@@ -142,48 +192,208 @@ document.getElementById('logout').onclick = ()=>{
 };
 
 const tablaBody = document.querySelector("#tablaReportes tbody");
+const loanSelect = document.getElementById('loanSelect');
+const loanInfo = document.getElementById('loanInfo');
+const loanDetails = document.getElementById('loanDetails');
 let planPagos = [];
+let currentLoan = null;
 
-document.getElementById('get').onclick = async ()=>{
-  const id = document.getElementById('loanid').value;
-  if(!id) return;
-
-  const res = await fetch(api+'/loans/'+id+'/payments',{ headers:{ Authorization:'Bearer '+token }});
-  if(!res.ok){ document.getElementById('msg').innerText='❌ No encontrado'; return; }
-
-  document.getElementById('msg').innerText='';
-  planPagos = await res.json();
-
-  tablaBody.innerHTML = "";
-  planPagos.forEach((p,i)=>{
-    tablaBody.innerHTML += `
-      <tr>
-        <td>${i+1}</td>
-        <td>S/ ${p.amortization.toFixed(2)}</td>
-        <td>S/ ${p.interest.toFixed(2)}</td>
-        <td>S/ ${(p.amortization+p.interest).toFixed(2)}</td>
-        <td>S/ ${p.balance.toFixed(2)}</td>
-      </tr>`;
-  });
-};
-
-function exportarPDF(){
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  doc.text("Reporte - Cronograma de Pagos", 20, 20);
-  let y = 40;
-  planPagos.forEach((p,i)=>{
-    doc.text(`Cuota ${i+1} | Amort: ${p.amortization.toFixed(2)} | Interés: ${p.interest.toFixed(2)} | Total: ${(p.interest+p.amortization).toFixed(2)} | Saldo: ${p.balance.toFixed(2)}`, 20, y);
-    y+=8;
-  });
-  doc.save("ReporteCredito.pdf");
+// Cargar lista de créditos
+async function loadLoans() {
+  try {
+    const res = await fetch(api + '/loans', { headers: { Authorization: 'Bearer ' + token } });
+    const loans = await res.json();
+    
+    if (loans.length === 0) {
+      loanSelect.innerHTML = '<option value="">No hay créditos registrados</option>';
+      return;
+    }
+    
+    loanSelect.innerHTML = '<option value="">-- Seleccione un crédito --</option>' + 
+      loans.map(loan => {
+        const clientName = loan.Client ? loan.Client.full_name : 'Sin cliente';
+        const propertyName = loan.Property ? loan.Property.project_name : 'Sin propiedad';
+        const moneda = loan.moneda === 'USD' ? '$' : 'S/';
+        const fecha = loan.start_date ? new Date(loan.start_date).toLocaleDateString('es-PE') : '';
+        return `<option value="${loan.id}">#${loan.id} - ${clientName} | ${propertyName} | ${moneda} ${parseFloat(loan.amount).toLocaleString()} | ${fecha}</option>`;
+      }).join('');
+      
+  } catch (err) {
+    console.error('Error cargando créditos', err);
+    loanSelect.innerHTML = '<option value="">Error al cargar créditos</option>';
+  }
 }
 
-function exportarExcel(){
+loadLoans();
+
+// Mostrar info del crédito seleccionado
+loanSelect.onchange = async function() {
+  const id = this.value;
+  if (!id) {
+    loanInfo.style.display = 'none';
+    document.getElementById('cronogramaBox').style.display = 'none';
+    return;
+  }
+  
+  try {
+    const res = await fetch(api + '/loans/' + id, { headers: { Authorization: 'Bearer ' + token } });
+    if (!res.ok) throw new Error('No encontrado');
+    
+    currentLoan = await res.json();
+    const moneda = currentLoan.moneda === 'USD' ? '$' : 'S/';
+    
+    loanDetails.innerHTML = `
+      <p><b>Cliente:</b> ${currentLoan.Client ? currentLoan.Client.full_name + ' (DNI: ' + currentLoan.Client.dni + ')' : 'N/A'}</p>
+      <p><b>Propiedad:</b> ${currentLoan.Property ? currentLoan.Property.project_name + ' - ' + currentLoan.Property.address : 'N/A'}</p>
+      <p><b>Monto:</b> ${moneda} ${parseFloat(currentLoan.amount).toLocaleString()}</p>
+      <p><b>Plazo:</b> ${currentLoan.term_months} meses</p>
+      <p><b>Tasa:</b> ${(parseFloat(currentLoan.annual_rate) * 100).toFixed(2)}% TEA (${currentLoan.tipo_tasa || 'efectiva'})</p>
+      <p><b>Periodo de Gracia:</b> ${currentLoan.periodo_gracia || 'ninguno'} ${currentLoan.meses_gracia > 0 ? '(' + currentLoan.meses_gracia + ' meses)' : ''}</p>
+      <p><b>Bono Techo Propio:</b> ${currentLoan.bono_techo ? moneda + ' ' + parseFloat(currentLoan.bono_monto).toLocaleString() : 'No aplica'}</p>
+      <p><b>Fecha Inicio:</b> ${currentLoan.start_date ? new Date(currentLoan.start_date).toLocaleDateString('es-PE') : 'N/A'}</p>
+    `;
+    loanInfo.style.display = 'block';
+    
+  } catch (err) {
+    console.error(err);
+    loanInfo.style.display = 'none';
+  }
+};
+
+document.getElementById('get').onclick = async () => {
+  const id = loanSelect.value;
+  if (!id) {
+    document.getElementById('msg').innerText = '⚠️ Seleccione un crédito';
+    return;
+  }
+
+  const res = await fetch(api + '/loans/' + id + '/payments', { headers: { Authorization: 'Bearer ' + token } });
+  if (!res.ok) { 
+    document.getElementById('msg').innerText = '❌ No se pudo obtener el cronograma'; 
+    return; 
+  }
+
+  document.getElementById('msg').innerText = '';
+  planPagos = await res.json();
+  
+  const moneda = currentLoan && currentLoan.moneda === 'USD' ? '$' : 'S/';
+  
+  // Calcular totales
+  let totalAmort = 0, totalInt = 0, totalPagado = 0;
+  planPagos.forEach(p => {
+    totalAmort += parseFloat(p.amortization);
+    totalInt += parseFloat(p.interest);
+    totalPagado += parseFloat(p.total);
+  });
+  
+  // Redondear para evitar errores de punto flotante
+  totalAmort = Math.round(totalAmort * 100) / 100;
+  totalInt = Math.round(totalInt * 100) / 100;
+  totalPagado = Math.round(totalPagado * 100) / 100;
+  
+  // Formatear con separador de miles
+  const formatNum = (n) => n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  
+  // Mostrar resumen
+  document.getElementById('resumenCredito').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;text-align:center;">
+      <div style="background:#fff;padding:0.8rem;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+        <div style="font-size:0.8rem;color:#666;">Total Cuotas</div>
+        <div style="font-size:1.3rem;font-weight:bold;color:#1a73e8;">${planPagos.length}</div>
+      </div>
+      <div style="background:#fff;padding:0.8rem;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+        <div style="font-size:0.8rem;color:#666;">Total Amortización</div>
+        <div style="font-size:1.1rem;font-weight:bold;color:#34a853;">${moneda} ${formatNum(totalAmort)}</div>
+      </div>
+      <div style="background:#fff;padding:0.8rem;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+        <div style="font-size:0.8rem;color:#666;">Total Intereses</div>
+        <div style="font-size:1.1rem;font-weight:bold;color:#ea4335;">${moneda} ${formatNum(totalInt)}</div>
+      </div>
+      <div style="background:#fff;padding:0.8rem;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);border:2px solid #1a73e8;">
+        <div style="font-size:0.8rem;color:#666;">Total a Pagar</div>
+        <div style="font-size:1.2rem;font-weight:bold;color:#1a73e8;">${moneda} ${formatNum(totalPagado)}</div>
+      </div>
+    </div>
+  `;
+
+  tablaBody.innerHTML = "";
+  planPagos.forEach((p, i) => {
+    const tipo = p.total == 0 ? 'Gracia Total' : (p.amortization == 0 ? 'Gracia Parcial' : 'Normal');
+    const fechaVenc = p.due_date ? new Date(p.due_date).toLocaleDateString('es-PE') : '';
+    tablaBody.innerHTML += `
+      <tr style="${tipo !== 'Normal' ? 'background:#fff3cd;' : ''}">
+        <td>${p.installment_number}</td>
+        <td>${tipo}</td>
+        <td>${moneda} ${parseFloat(p.amortization).toFixed(2)}</td>
+        <td>${moneda} ${parseFloat(p.interest).toFixed(2)}</td>
+        <td>${moneda} ${parseFloat(p.total).toFixed(2)}</td>
+        <td>${moneda} ${parseFloat(p.balance).toFixed(2)}</td>
+        <td>${fechaVenc}</td>
+      </tr>`;
+  });
+  
+  document.getElementById('cronogramaBox').style.display = 'block';
+};
+
+function exportarPDF() {
+  if (planPagos.length === 0) { alert('Primero obtén el cronograma'); return; }
+  
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const moneda = currentLoan && currentLoan.moneda === 'USD' ? '$' : 'S/';
+  
+  // Título
+  doc.setFontSize(16);
+  doc.text("Cronograma de Pagos - MiHogarFinanzas", 20, 20);
+  
+  // Info del crédito
+  doc.setFontSize(10);
+  let y = 35;
+  if (currentLoan) {
+    doc.text(`Cliente: ${currentLoan.Client ? currentLoan.Client.full_name : 'N/A'}`, 20, y); y += 6;
+    doc.text(`Propiedad: ${currentLoan.Property ? currentLoan.Property.project_name : 'N/A'}`, 20, y); y += 6;
+    doc.text(`Monto: ${moneda} ${parseFloat(currentLoan.amount).toLocaleString()} | Plazo: ${currentLoan.term_months} meses | TEA: ${(parseFloat(currentLoan.annual_rate) * 100).toFixed(2)}%`, 20, y); y += 10;
+  }
+  
+  // Encabezados
+  doc.setFontSize(9);
+  doc.text("Cuota | Tipo | Amortización | Interés | Total | Saldo | Vencimiento", 20, y);
+  y += 6;
+  
+  // Datos
+  doc.setFontSize(8);
+  planPagos.forEach((p) => {
+    if (y > 280) { doc.addPage(); y = 20; }
+    const tipo = p.total == 0 ? 'G.Total' : (p.amortization == 0 ? 'G.Parcial' : 'Normal');
+    const fechaVenc = p.due_date ? new Date(p.due_date).toLocaleDateString('es-PE') : '';
+    doc.text(`${p.installment_number} | ${tipo} | ${moneda}${parseFloat(p.amortization).toFixed(2)} | ${moneda}${parseFloat(p.interest).toFixed(2)} | ${moneda}${parseFloat(p.total).toFixed(2)} | ${moneda}${parseFloat(p.balance).toFixed(2)} | ${fechaVenc}`, 20, y);
+    y += 5;
+  });
+  
+  doc.save("Cronograma_Credito_" + (currentLoan ? currentLoan.id : '') + ".pdf");
+}
+
+function exportarExcel() {
+  if (planPagos.length === 0) { alert('Primero obtén el cronograma'); return; }
+  
+  const moneda = currentLoan && currentLoan.moneda === 'USD' ? 'USD' : 'PEN';
+  
+  // Preparar datos con formato
+  const dataExcel = planPagos.map(p => ({
+    'Cuota': p.installment_number,
+    'Tipo': p.total == 0 ? 'Gracia Total' : (p.amortization == 0 ? 'Gracia Parcial' : 'Normal'),
+    'Amortización': parseFloat(p.amortization),
+    'Interés': parseFloat(p.interest),
+    'Cuota Total': parseFloat(p.total),
+    'Saldo': parseFloat(p.balance),
+    'Fecha Vencimiento': p.due_date,
+    'Moneda': moneda
+  }));
+  
   const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.json_to_sheet(planPagos);
+  const ws = XLSX.utils.json_to_sheet(dataExcel);
   XLSX.utils.book_append_sheet(wb, ws, "Cronograma");
-  XLSX.writeFile(wb, "ReporteCredito.xlsx");
+  XLSX.writeFile(wb, "Cronograma_Credito_" + (currentLoan ? currentLoan.id : '') + ".xlsx");
 }
 </script>
 <!-- BOTONES DE VOZ -->

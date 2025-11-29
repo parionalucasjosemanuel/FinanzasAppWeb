@@ -13,7 +13,7 @@
     }
     .sidebar h3 {text-align: center; margin-bottom: 1.5rem;}
     .sidebar a {
-      color: white; text-decoration: none; padding: 0.7rem; margin: 0.3rem 0;
+      color: white; text-decoration: none; padding: 0.6rem 0.8rem;
       display: block; border-radius: 8px; transition: 0.3s;
     }
     .sidebar a:hover {background: #0f5dd1;}
@@ -64,8 +64,8 @@ body {display: flex; height: 100vh; background: #f4f6f9;}
 .sidebar h3 {text-align: center; margin-bottom: 2rem;}
 
 .sidebar a {
-  text-decoration: none; color: white; padding: 0.8rem;
-  margin: 0.3rem 0; display: block; border-radius: 8px; transition: 0.3s;
+  text-decoration: none; color: white; padding: 0.6rem 0.8rem;
+  display: block; border-radius: 8px; transition: 0.3s;
 }
 
 .sidebar a:hover {background: #0f5dd1;}
@@ -237,6 +237,35 @@ body {display: flex; height: 100vh; background: #f4f6f9;}
 
     let editId = null;
 
+    // Funciones de validación
+    function validarProyecto(proyecto) {
+      if (!proyecto || proyecto.trim().length < 3) return 'El nombre del proyecto debe tener al menos 3 caracteres';
+      return null;
+    }
+
+    function validarDireccion(direccion) {
+      if (!direccion || direccion.trim().length < 5) return 'La dirección debe tener al menos 5 caracteres';
+      return null;
+    }
+
+    function validarArea(area) {
+      if (!area || parseFloat(area) <= 0) return 'El área debe ser mayor a 0';
+      if (parseFloat(area) > 10000) return 'El área no puede superar 10,000 m²';
+      return null;
+    }
+
+    function validarHabitaciones(habitaciones) {
+      if (!habitaciones || parseInt(habitaciones) < 1) return 'Debe tener al menos 1 habitación';
+      if (parseInt(habitaciones) > 20) return 'El máximo es 20 habitaciones';
+      return null;
+    }
+
+    function validarPrecio(precio) {
+      if (!precio || parseFloat(precio) <= 0) return 'El precio debe ser mayor a 0';
+      if (parseFloat(precio) > 50000000) return 'El precio no puede superar 50,000,000';
+      return null;
+    }
+
     async function load(){
       const res = await fetch(api+'/properties',{ headers:{ Authorization:'Bearer '+token }});
       const props = await res.json();
@@ -259,14 +288,32 @@ body {display: flex; height: 100vh; background: #f4f6f9;}
     load();
 
     document.getElementById('save').onclick = async ()=>{
+      const proyecto = document.getElementById('pname').value;
+      const direccion = document.getElementById('paddr').value;
+      const area = document.getElementById('parea').value;
+      const habitaciones = document.getElementById('prooms').value;
+      const precio = document.getElementById('pprice').value;
+      const moneda = document.getElementById('pcurrency').value;
+      const estado = document.getElementById('pstatus').value;
+
+      // Validaciones
+      let error = validarProyecto(proyecto) || validarDireccion(direccion) || 
+                  validarArea(area) || validarHabitaciones(habitaciones) || validarPrecio(precio);
+      
+      if (error) {
+        document.getElementById('msg').innerText = '❌ ' + error;
+        document.getElementById('msg').style.color = 'red';
+        return;
+      }
+
       const data = {
-        project_name: document.getElementById('pname').value,
-        address: document.getElementById('paddr').value,
-        area: document.getElementById('parea').value,
-        rooms: document.getElementById('prooms').value,
-        price: document.getElementById('pprice').value,
-        currency: document.getElementById('pcurrency').value,
-        status: document.getElementById('pstatus').value
+        project_name: proyecto.trim(),
+        address: direccion.trim(),
+        area: area,
+        rooms: habitaciones,
+        price: precio,
+        currency: moneda,
+        status: estado
       };
 
       let url = api+'/properties';

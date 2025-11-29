@@ -26,8 +26,8 @@
   .brand span { font-weight: bold; font-size: 1.1rem; }
 
   .sidebar a {
-    text-decoration: none; color: white; padding: 0.8rem;
-    margin: 0.3rem 0; display: block; border-radius: 8px; transition: 0.3s;
+    text-decoration: none; color: white; padding: 0.6rem 0.8rem;
+    display: block; border-radius: 8px; transition: 0.3s;
   }
   .sidebar a:hover {background: #0f5dd1;}
 
@@ -222,15 +222,69 @@
 
     loadClientes();
 
+    // Funciones de validación
+    function validarNombre(nombre) {
+      if (!nombre || nombre.trim().length < 3) return 'El nombre debe tener al menos 3 caracteres';
+      if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(nombre)) return 'El nombre solo puede contener letras y espacios';
+      return null;
+    }
+
+    function validarDNI(dni) {
+      if (!dni) return 'El DNI es obligatorio';
+      if (!/^\d{8}$/.test(dni)) return 'El DNI debe tener exactamente 8 dígitos numéricos';
+      return null;
+    }
+
+    function validarEmail(email) {
+      if (!email) return 'El correo es obligatorio';
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'El formato del correo no es válido';
+      return null;
+    }
+
+    function validarTelefono(telefono) {
+      if (!telefono) return 'El teléfono es obligatorio';
+      if (!/^9\d{8}$/.test(telefono)) return 'El teléfono debe tener 9 dígitos y empezar con 9';
+      return null;
+    }
+
+    function validarIngresos(ingresos) {
+      if (!ingresos || parseFloat(ingresos) <= 0) return 'Los ingresos deben ser mayores a 0';
+      if (parseFloat(ingresos) > 1000000) return 'Los ingresos no pueden superar S/ 1,000,000';
+      return null;
+    }
+
+    function validarEstadoCivil(estado) {
+      if (!estado) return 'Debe seleccionar un estado civil';
+      return null;
+    }
+
     form.onsubmit = async (e) => {
       e.preventDefault();
+      
+      const nombre = document.getElementById('nombre').value;
+      const dni = document.getElementById('dni').value;
+      const correo = document.getElementById('correo').value;
+      const telefono = document.getElementById('telefono').value;
+      const ingresos = document.getElementById('ingresos').value;
+      const estado = document.getElementById('estado').value;
+
+      // Validaciones
+      let error = validarNombre(nombre) || validarDNI(dni) || validarEmail(correo) || 
+                  validarTelefono(telefono) || validarIngresos(ingresos) || validarEstadoCivil(estado);
+      
+      if (error) {
+        msg.innerText = '❌ ' + error;
+        msg.className = 'error';
+        return;
+      }
+
       const data = {
-        full_name: document.getElementById('nombre').value,
-        dni: document.getElementById('dni').value,
-        email: document.getElementById('correo').value,
-        phone: document.getElementById('telefono').value,
-        income: document.getElementById('ingresos').value,
-        marital_status: document.getElementById('estado').value
+        full_name: nombre.trim(),
+        dni: dni,
+        email: correo.trim(),
+        phone: telefono,
+        income: ingresos,
+        marital_status: estado
       };
 
       let res;
