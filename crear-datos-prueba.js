@@ -1,12 +1,3 @@
-// Script para crear datos de prueba que coincidan con el Excel
-// Valores del Excel:
-// - Precio de Venta: 350,000
-// - Cuota Inicial: 20% = 70,000
-// - Saldo a financiar: 280,000
-// - Plazo: 10 años = 120 meses
-// - TEA: 11%
-// - Tasa de descuento (COK): 20%
-
 const http = require('http');
 
 const API_BASE = 'http://localhost:4000/api';

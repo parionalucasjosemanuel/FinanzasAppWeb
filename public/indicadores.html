@@ -129,11 +129,10 @@
         <option value="">Cargando préstamos...</option>
       </select>
 
-      <label>Tasa de Descuento Anual (%) - COK</label>
-      <input type="number" id="tasaDescuento" step="0.01" value="20" min="0" max="100">
-      <small style="color:#666;">Carga automáticamente la tasa del préstamo, pero puedes modificarla para análisis de sensibilidad</small>
-
-      <button id="calcular">Calcular Indicadores</button>
+      <button id="calcular" style="margin-top:1rem;">Ver Indicadores</button>
+      <p style="margin-top:0.5rem; color:#666; font-size:0.85rem;">
+        Los indicadores mostrados son los calculados al momento de generar el plan de pagos.
+      </p>
     </div>
 
     <!-- Info del préstamo seleccionado -->
@@ -203,110 +202,19 @@
 
     loadLoans();
 
-    // Cuando se selecciona un préstamo, cargar su tasa de descuento
+    // Cuando se selecciona un préstamo, cargar su información
     document.getElementById('loanSelect').onchange = function() {
       const loanId = parseInt(this.value);
-      if (!loanId) {
-        document.getElementById('tasaDescuento').value = 20;
-        return;
-      }
-      const loan = prestamosData.find(l => l.id === loanId);
-      if (loan && loan.tasa_descuento) {
-        // La tasa está guardada como decimal (0.20), convertir a porcentaje
-        document.getElementById('tasaDescuento').value = (parseFloat(loan.tasa_descuento) * 100).toFixed(2);
-      } else {
-        document.getElementById('tasaDescuento').value = 20;
-      }
+      if (!loanId) return;
+      // Auto-click en calcular para mostrar los datos
     };
 
-    // Funciones de cálculo
-    function monthlyRateFromAnnual(annualRate) {
-      return Math.pow(1 + annualRate, 30 / 360) - 1;
-    }
-
-    function nominalToEffective(nominalRate, capitalizacion) {
-      const periodos = { 'mensual': 12, 'trimestral': 4, 'semestral': 2, 'anual': 1 };
-      const n = periodos[capitalizacion] || 12;
-      return Math.pow(1 + nominalRate / n, n) - 1;
-    }
-
-    function generarCronograma(amount, months, annualRate, tipoGracia, mesesGracia) {
-      const r = monthlyRateFromAnnual(annualRate);
-      let balance = amount;
-      let schedule = [];
-
-      // Meses de gracia
-      for (let i = 1; i <= mesesGracia; i++) {
-        const interest = balance * r;
-        if (tipoGracia === 'total') {
-          balance += interest;
-          schedule.push({ num: i, amort: 0, interest: 0, total: 0, balance, tipo: 'Gracia Total' });
-        } else if (tipoGracia === 'parcial') {
-          schedule.push({ num: i, amort: 0, interest, total: interest, balance, tipo: 'Gracia Parcial' });
-        }
-      }
-
-      const mesesRestantes = months - mesesGracia;
-      if (mesesRestantes <= 0) return { cuota: 0, schedule, flujos: [] };
-
-      const cuota = balance * (r * Math.pow(1 + r, mesesRestantes)) / (Math.pow(1 + r, mesesRestantes) - 1);
-
-      for (let i = mesesGracia + 1; i <= months; i++) {
-        const interest = balance * r;
-        let amort = cuota - interest;
-        
-        // En la última cuota, ajustar para que el saldo quede exactamente en 0
-        if (i === months) {
-          amort = balance;
-        }
-        
-        balance = Math.max(0, balance - amort);
-        const totalCuota = (i === months) ? amort + interest : cuota;
-        
-        schedule.push({ num: i, amort, interest, total: totalCuota, balance, tipo: 'Normal' });
-      }
-
-      const flujos = schedule.map(s => s.total);
-      return { cuota, schedule, flujos };
-    }
-
-    function calcularVAN(monto, flujos, tasaDescuentoAnual) {
-      const tasaMensual = Math.pow(1 + tasaDescuentoAnual, 1 / 12) - 1;
-      let vna = 0;
-      for (let i = 0; i < flujos.length; i++) {
-        vna += flujos[i] / Math.pow(1 + tasaMensual, i + 1);
-      }
-      return { van: -monto + vna, tasaMensual };
-    }
-
-    function calcularTIR(monto, flujos) {
-      function npv(rate) {
-        let sum = -monto;
-        for (let i = 0; i < flujos.length; i++) {
-          sum += flujos[i] / Math.pow(1 + rate, i + 1);
-        }
-        return sum;
-      }
-      let low = 0, high = 1, mid;
-      for (let i = 0; i < 100; i++) {
-        mid = (low + high) / 2;
-        if (npv(mid) > 0) low = mid;
-        else high = mid;
-      }
-      return mid;
-    }
-
-    // Calcular indicadores
-    document.getElementById('calcular').onclick = function () {
+    // Calcular indicadores - Ahora solo muestra los valores guardados del préstamo
+    document.getElementById('calcular').onclick = async function () {
       const loanId = parseInt(document.getElementById('loanSelect').value);
-      const tasaDescuento = parseFloat(document.getElementById('tasaDescuento').value) / 100;
 
       if (!loanId) {
         alert('❌ Seleccione un préstamo');
-        return;
-      }
-      if (isNaN(tasaDescuento) || tasaDescuento <= 0 || tasaDescuento > 1) {
-        alert('❌ La tasa de descuento debe estar entre 0% y 100%');
         return;
       }
 
@@ -317,40 +225,40 @@
       }
 
       // Extraer datos del préstamo
-      const montoOriginal = parseFloat(loan.amount);
+      const montoOriginal = parseFloat(loan.amount) + (parseFloat(loan.bono_monto) || 0);
       const bonoMonto = parseFloat(loan.bono_monto) || 0;
       const bonoAplica = loan.bono_techo;
-      const montoReal = bonoAplica ? montoOriginal - bonoMonto : montoOriginal;
+      const montoFinanciado = parseFloat(loan.amount);
 
-      const plazo = loan.term_months;
-      // La tasa ya viene como decimal del backend (ej: 0.11 para 11%)
-      let tasaEfectiva = parseFloat(loan.annual_rate);
-
-      // Convertir si es nominal (ya no es necesario, el backend ya lo hizo)
-      // if (loan.tipo_tasa === 'nominal') {
-      //   tasaEfectiva = nominalToEffective(tasaEfectiva, loan.capitalizacion || 'mensual');
-      // }
+      const plazo = parseInt(loan.term_months) || 12;
+      const tasaEfectiva = parseFloat(loan.annual_rate) || 0.11;
+      const tasaDescuento = parseFloat(loan.tasa_descuento) || 0.20;
 
       const tipoGracia = loan.periodo_gracia || 'ninguno';
-      const mesesGracia = loan.meses_gracia || 0;
+      const mesesGracia = parseInt(loan.meses_gracia) || 0;
       const moneda = loan.moneda || 'PEN';
       const simbolo = moneda === 'USD' ? '$' : 'S/';
+      
+      // Frecuencia de pago
+      const diasPeriodo = parseInt(loan.frecuencia_pago) || 30;
+      const nombrePeriodo = diasPeriodo === 30 ? 'mensual' : 
+                            diasPeriodo === 60 ? 'bimestral' : 
+                            diasPeriodo === 90 ? 'trimestral' : 
+                            diasPeriodo === 180 ? 'semestral' : 'anual';
 
-      // Generar cronograma y flujos
-      const { cuota, schedule, flujos } = generarCronograma(montoReal, plazo, tasaEfectiva, tipoGracia, mesesGracia);
+      // Obtener indicadores guardados
+      const vanCalculado = parseFloat(loan.van_calculado) || 0;
+      const tirPeriodo = parseFloat(loan.tir_periodo) || 0;
+      const tirAnual = parseFloat(loan.tir_anual) || 0;
+      const tceaAnual = parseFloat(loan.tcea_anual) || 0;
+      const cuotaBase = parseFloat(loan.cuota_base) || 0;
+      const cuotaTotal = parseFloat(loan.cuota_total) || 0;
+      const totalPagar = parseFloat(loan.total_pagar) || 0;
+      const totalIntereses = parseFloat(loan.total_intereses) || 0;
 
-      // Calcular indicadores
-      const { van, tasaMensual } = calcularVAN(montoReal, flujos, tasaDescuento);
-      const tirMensual = calcularTIR(montoReal, flujos);
-      const tirAnual = Math.pow(1 + tirMensual, 12) - 1;
-
-      // Totales
-      let totalInteres = 0, totalAmort = 0, totalPagado = 0;
-      schedule.forEach(s => {
-        totalInteres += s.interest;
-        totalAmort += s.amort;
-        totalPagado += s.total;
-      });
+      // Calcular tasa del período para mostrar
+      const tasaPeriodo = Math.pow(1 + tasaEfectiva, diasPeriodo / 360) - 1;
+      const tasaDescPeriodo = Math.pow(1 + tasaDescuento, diasPeriodo / 360) - 1;
 
       // Mostrar info del préstamo
       document.getElementById('infoBox').style.display = 'block';
@@ -359,48 +267,67 @@
         <p><b>Propiedad:</b> ${loan.Property ? loan.Property.project_name : 'N/A'}</p>
         <p><b>Monto Original:</b> ${simbolo} ${montoOriginal.toLocaleString()}</p>
         ${bonoAplica ? `<p><b>Bono Techo Propio:</b> - ${simbolo} ${bonoMonto.toLocaleString()}</p>` : ''}
-        <p><b>Monto Financiado:</b> ${simbolo} ${montoReal.toLocaleString()}</p>
-        <p><b>Plazo:</b> ${plazo} meses</p>
-        <p><b>TEA:</b> ${(parseFloat(loan.annual_rate) * 100).toFixed(2)}%</p>
-        <p><b>Tasa de Descuento (COK):</b> ${(tasaDescuento * 100).toFixed(2)}%</p>
-        <p><b>Periodo de Gracia:</b> ${tipoGracia} (${mesesGracia} meses)</p>
-        <p><b>Cuota Mensual:</b> ${simbolo} ${cuota.toFixed(2)}</p>
-        <p><b>Total a Pagar:</b> ${simbolo} ${totalPagado.toFixed(2)}</p>
-        <p><b>Total Intereses:</b> ${simbolo} ${totalInteres.toFixed(2)}</p>
+        <p><b>Monto Financiado:</b> ${simbolo} ${montoFinanciado.toLocaleString()}</p>
+        <p><b>Plazo:</b> ${plazo} cuotas ${nombrePeriodo}es</p>
+        <p><b>TEA:</b> ${(tasaEfectiva * 100).toFixed(2)}%</p>
+        <p><b>TEP (${nombrePeriodo}):</b> ${(tasaPeriodo * 100).toFixed(4)}%</p>
+        <p><b>Tasa de Descuento (COK):</b> ${(tasaDescuento * 100).toFixed(2)}% anual</p>
+        <p><b>Periodo de Gracia:</b> ${tipoGracia !== 'ninguno' ? tipoGracia + ' (' + mesesGracia + ' períodos)' : 'Ninguno'}</p>
+        <p><b>Cuota ${nombrePeriodo.charAt(0).toUpperCase() + nombrePeriodo.slice(1)}:</b> ${simbolo} ${cuotaTotal.toFixed(2)}</p>
+        <p><b>Total a Pagar:</b> ${simbolo} ${totalPagar.toFixed(2)}</p>
+        <p><b>Total Intereses:</b> ${simbolo} ${totalIntereses.toFixed(2)}</p>
       `;
 
-      // Mostrar indicadores en cards
+      // Mostrar indicadores en cards (valores guardados)
       document.getElementById('indicadoresGrid').innerHTML = `
         <div class="indicador-card van">
           <h3>VAN del Préstamo</h3>
-          <div class="valor">${simbolo} ${van.toFixed(2)}</div>
-          <small>${van > 0 ? '✅ Genera valor' : '⚠️ Por debajo del COK'}</small>
-          <small>Tasa desc: ${(tasaMensual * 100).toFixed(4)}% mensual</small>
+          <div class="valor">${simbolo} ${vanCalculado.toFixed(2)}</div>
+          <small>${vanCalculado > 0 ? '✅ Genera valor' : '⚠️ Por debajo del COK'}</small>
         </div>
         <div class="indicador-card tir">
-          <h3>TIR Mensual</h3>
-          <div class="valor">${(tirMensual * 100).toFixed(4)}%</div>
-          <small>Rentabilidad mensual del crédito</small>
+          <h3>TIR ${nombrePeriodo.charAt(0).toUpperCase() + nombrePeriodo.slice(1)}</h3>
+          <div class="valor">${(tirPeriodo * 100).toFixed(4)}%</div>
+          <small>→ ${(tirAnual * 100).toFixed(2)}% anual</small>
         </div>
         <div class="indicador-card tcea">
-          <h3>TCEA (TIR Anual)</h3>
-          <div class="valor">${(tirAnual * 100).toFixed(2)}%</div>
-          <small>Costo Efectivo Anual real</small>
+          <h3>TCEA (Costo Efectivo Anual)</h3>
+          <div class="valor">${(tceaAnual * 100).toFixed(2)}%</div>
+          <small>Incluye todos los costos</small>
         </div>
       `;
 
-      // Mostrar cronograma
-      const tbody = document.querySelector('#tablaCronograma tbody');
-      tbody.innerHTML = schedule.map(s => `
-        <tr style="${s.tipo !== 'Normal' ? 'background:#fff3cd;' : ''}">
-          <td>${s.num}</td>
-          <td>${s.tipo}</td>
-          <td>${simbolo} ${s.amort.toFixed(2)}</td>
-          <td>${simbolo} ${s.interest.toFixed(2)}</td>
-          <td>${simbolo} ${s.total.toFixed(2)}</td>
-          <td>${simbolo} ${s.balance.toFixed(2)}</td>
-        </tr>
-      `).join('');
+      // Cargar cronograma desde la API
+      try {
+        const paymentsRes = await fetch(api + '/loans/' + loanId + '/payments', { 
+          headers: { Authorization: 'Bearer ' + token } 
+        });
+        const payments = await paymentsRes.json();
+
+        // Actualizar encabezado de tabla
+        document.querySelector('#tablaCronograma thead tr').innerHTML = `
+          <th>Cuota</th>
+          <th>Amortización</th>
+          <th>Interés</th>
+          <th>Cuota Total</th>
+          <th>Saldo</th>
+        `;
+
+        // Mostrar cronograma
+        const tbody = document.querySelector('#tablaCronograma tbody');
+        tbody.innerHTML = payments.map(p => `
+          <tr>
+            <td>${p.installment_number}</td>
+            <td>${simbolo} ${parseFloat(p.amortization).toFixed(2)}</td>
+            <td>${simbolo} ${parseFloat(p.interest).toFixed(2)}</td>
+            <td>${simbolo} ${parseFloat(p.total).toFixed(2)}</td>
+            <td>${simbolo} ${parseFloat(p.balance).toFixed(2)}</td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        console.error('Error cargando pagos:', err);
+        document.querySelector('#tablaCronograma tbody').innerHTML = '<tr><td colspan="5">Error al cargar cronograma</td></tr>';
+      }
     };
   </script>
 

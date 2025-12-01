@@ -135,6 +135,10 @@
         </select>
         <div class="tooltip">Define si el crédito será en moneda nacional (Soles) o extranjera (Dólares).</div>
 
+        <label for="tipoCambio">Tipo de Cambio (PEN/USD)</label>
+        <input type="number" id="tipoCambio" step="0.01" min="0.01" value="3.75" style="width:100%;padding:0.7rem;border:1px solid #ccc;border-radius:8px;margin-top:0.3rem;" required>
+        <div class="tooltip">Tipo de cambio actual para conversión de Dólares a Soles. Se usa para evaluar el Bono Techo Propio en propiedades en USD.</div>
+
         <label for="tasa">Tipo de Tasa de Interés</label>
         <select id="tasa" required>
           <option value="">Seleccione...</option>
@@ -190,6 +194,21 @@
     const configForm = document.getElementById("configForm");
     const resultado = document.getElementById("resultadoConfig");
 
+    // Cargar configuración guardada al iniciar
+    function cargarConfiguracionGuardada() {
+      const cfg = localStorage.getItem('mhf_config');
+      if (cfg) {
+        const config = JSON.parse(cfg);
+        if (config.moneda) document.getElementById("moneda").value = config.moneda;
+        if (config.tipo_tasa) document.getElementById("tasa").value = config.tipo_tasa;
+        if (config.capitalizacion) document.getElementById("capitalizacion").value = config.capitalizacion;
+        if (config.periodo_gracia) document.getElementById("gracia").value = config.periodo_gracia;
+        if (config.meses_gracia !== undefined) document.getElementById("mesesGracia").value = config.meses_gracia;
+        if (config.tipo_cambio) document.getElementById("tipoCambio").value = config.tipo_cambio;
+      }
+    }
+    cargarConfiguracionGuardada();
+
     configForm.onsubmit = async function(e){
       e.preventDefault();
       const cfg = {
@@ -197,7 +216,8 @@
         tipo_tasa: document.getElementById("tasa").value,
         capitalizacion: document.getElementById("capitalizacion").value,
         periodo_gracia: document.getElementById("gracia").value,
-        meses_gracia: parseInt(document.getElementById("mesesGracia").value) || 0
+        meses_gracia: parseInt(document.getElementById("mesesGracia").value) || 0,
+        tipo_cambio: parseFloat(document.getElementById("tipoCambio").value) || 3.75
       };
 
       // Validación: si hay gracia, debe haber meses > 0
@@ -228,6 +248,7 @@
       resultado.innerHTML = `
         <h3>Configuración Guardada ✅</h3>
         <p><b>Moneda:</b> ${cfg.moneda}</p>
+        <p><b>Tipo de Cambio:</b> S/ ${cfg.tipo_cambio.toFixed(2)} por USD</p>
         <p><b>Tipo de Tasa:</b> ${cfg.tipo_tasa.toUpperCase()}</p>
         <p><b>Capitalización:</b> ${cfg.capitalizacion}</p>
         <p><b>Periodo de Gracia:</b> ${cfg.periodo_gracia}</p>

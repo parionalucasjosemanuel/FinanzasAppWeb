@@ -31,8 +31,8 @@ const PORT = process.env.PORT || 4000;
   try {
     await sequelize.authenticate();
     console.log('Database connected.');
-    // sync and seed if empty
-    await sequelize.sync();
+    // sync and seed if empty (alter: true para agregar nuevas columnas)
+    await sequelize.sync({ alter: true });
     await seedIfNeeded();
     app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
   } catch (err) {

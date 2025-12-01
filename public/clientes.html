@@ -156,6 +156,18 @@
           <option value="Viudo">Viudo</option>
         </select>
 
+        <label for="primeraVivienda">¿Es su primera vivienda?</label>
+        <select id="primeraVivienda" required>
+          <option value="true">Sí, no tengo otra vivienda</option>
+          <option value="false">No, ya tengo otra vivienda</option>
+        </select>
+
+        <label for="tieneTerreno">¿Tiene terreno propio?</label>
+        <select id="tieneTerreno" required>
+          <option value="false">No</option>
+          <option value="true">Sí, tengo terreno propio</option>
+        </select>
+
         <button type="submit">Guardar Cliente</button>
         <div id="msg"></div>
       </form>
@@ -173,6 +185,7 @@
             <th>Teléfono</th>
             <th>Ingresos</th>
             <th>Estado Civil</th>
+            <th>Bono TP</th>
             <th>Acciones</th>
           </tr>
         </thead>
@@ -203,6 +216,8 @@
       const clientes = await res.json();
       tbody.innerHTML = '';
       clientes.forEach(c => {
+        // Evaluar elegibilidad para Bono Techo Propio
+        const bonoEval = evaluarBonoTechoPropio(c);
         const row = document.createElement('tr');
         row.innerHTML = `
           <td>${c.id}</td>
@@ -212,12 +227,83 @@
           <td>${c.phone}</td>
           <td>S/ ${c.income}</td>
           <td>${c.marital_status}</td>
+          <td style="font-size:0.8rem;">${bonoEval.html}</td>
           <td class="actions">
-            <button class="edit" onclick="editarCliente(${c.id}, '${c.full_name}', '${c.dni}', '${c.email}', '${c.phone}', '${c.income}', '${c.marital_status}')">Editar</button>
+            <button class="edit" onclick="editarCliente(${c.id}, '${c.full_name}', '${c.dni}', '${c.email}', '${c.phone}', '${c.income}', '${c.marital_status}', ${c.es_primera_vivienda}, ${c.tiene_terreno_propio})">Editar</button>
             <button class="delete" onclick="eliminarCliente(${c.id})">Eliminar</button>
           </td>`;
         tbody.appendChild(row);
       });
+    }
+
+    // Función para evaluar elegibilidad al Bono Techo Propio
+    function evaluarBonoTechoPropio(cliente) {
+      const ingresos = parseFloat(cliente.income) || 0;
+      const esPrimeraVivienda = cliente.es_primera_vivienda !== false;
+      const tieneTerreno = cliente.tiene_terreno_propio === true;
+      
+      // Límites según normativa 2025
+      const LIMITE_COMPRA = 3715;
+      const LIMITE_CONSTRUIR = 2706;
+      
+      // Bonos según tipo de vivienda (valores 2025)
+      const BONOS = {
+        vis_priorizada_lote: { valor: 56710, maxVivienda: 60000, nombre: 'VIS Priorizada Lote' },
+        vis_priorizada_multi: { valor: 51895, maxVivienda: 70000, nombre: 'VIS Priorizada Multi' },
+        vis_lote: { valor: 50825, maxVivienda: 109000, nombre: 'VIS Lote Unifamiliar' },
+        vis_multi: { valor: 46545, maxVivienda: 136000, nombre: 'VIS Multifamiliar' },
+        construir: { valor: 32100, nombre: 'Construcción en Sitio Propio' },
+        mejorar: { valor: 12305, nombre: 'Mejoramiento de Vivienda' }
+      };
+      
+      let resultado = { aplica: false, modalidades: [], html: '' };
+      
+      // No aplica si no es primera vivienda
+      if (!esPrimeraVivienda) {
+        resultado.html = '<span style="color:#dc3545;">❌ No aplica<br><small>(Ya tiene vivienda)</small></span>';
+        return resultado;
+      }
+      
+      // Evaluar para COMPRAR (ingresos ≤ S/ 3,715)
+      if (ingresos <= LIMITE_COMPRA) {
+        resultado.aplica = true;
+        resultado.modalidades.push({
+          tipo: 'Compra de Vivienda',
+          bonos: [
+            `VIS Priorizada Lote: S/ 56,710 (vivienda hasta S/ 60,000)`,
+            `VIS Priorizada Multi: S/ 51,895 (vivienda hasta S/ 70,000)`,
+            `VIS Lote Unifamiliar: S/ 50,825 (vivienda hasta S/ 109,000)`,
+            `VIS Multifamiliar: S/ 46,545 (vivienda hasta S/ 136,000)`
+          ]
+        });
+      }
+      
+      // Evaluar para CONSTRUIR (ingresos ≤ S/ 2,706 y tiene terreno)
+      if (ingresos <= LIMITE_CONSTRUIR && tieneTerreno) {
+        resultado.aplica = true;
+        resultado.modalidades.push({
+          tipo: 'Construcción en Sitio Propio',
+          bonos: [`Bono CSP: S/ 32,100`]
+        });
+      }
+      
+      // Evaluar para MEJORAR (ingresos ≤ S/ 2,706 y tiene terreno)
+      if (ingresos <= LIMITE_CONSTRUIR && tieneTerreno) {
+        resultado.modalidades.push({
+          tipo: 'Mejoramiento de Vivienda',
+          bonos: [`Bono MV: S/ 12,305`]
+        });
+      }
+      
+      // Generar HTML de resultado
+      if (resultado.aplica) {
+        const modalidadesText = resultado.modalidades.map(m => m.tipo).join(', ');
+        resultado.html = `<span style="color:#34a853;">✅ Aplica<br><small>${modalidadesText}</small></span>`;
+      } else {
+        resultado.html = '<span style="color:#dc3545;">❌ No aplica<br><small>(Ingresos exceden límite)</small></span>';
+      }
+      
+      return resultado;
     }
 
     loadClientes();
@@ -284,7 +370,9 @@
         email: correo.trim(),
         phone: telefono,
         income: ingresos,
-        marital_status: estado
+        marital_status: estado,
+        es_primera_vivienda: document.getElementById('primeraVivienda').value === 'true',
+        tiene_terreno_propio: document.getElementById('tieneTerreno').value === 'true'
       };
 
       let res;
@@ -317,7 +405,7 @@
       loadClientes();
     };
 
-    window.editarCliente = (id, nombre, dni, correo, telefono, ingresos, estado) => {
+    window.editarCliente = (id, nombre, dni, correo, telefono, ingresos, estado, primeraVivienda, tieneTerreno) => {
       document.getElementById('clienteId').value = id;
       document.getElementById('nombre').value = nombre;
       document.getElementById('dni').value = dni;
@@ -325,6 +413,8 @@
       document.getElementById('telefono').value = telefono;
       document.getElementById('ingresos').value = ingresos;
       document.getElementById('estado').value = estado;
+      document.getElementById('primeraVivienda').value = primeraVivienda ? 'true' : 'false';
+      document.getElementById('tieneTerreno').value = tieneTerreno ? 'true' : 'false';
       formTitle.textContent = "Editar Cliente";
       editMode = true;
     };
